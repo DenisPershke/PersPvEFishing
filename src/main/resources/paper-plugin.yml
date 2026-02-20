@@ -1,0 +1,4 @@
+name: PersPvEFishing
+version: '${project.version}'
+main: pershkin.perspvefishing.PersPvEFishing
+api-version: '1.16'

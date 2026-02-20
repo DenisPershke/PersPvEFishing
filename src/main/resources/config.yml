@@ -1,0 +1,105 @@
+database: sqlite
+
+security:
+  signing_secret: ""
+
+top:
+  size: 10
+
+rarities:
+  common:
+    display_name: "Обычная"
+    color: "&f"
+    chance: 70
+    weight_min: 1.0
+    weight_max: 3.0
+    price_per_kg: 10
+  rare:
+    display_name: "Редкая"
+    color: "&b"
+    chance: 25
+    weight_min: 2.0
+    weight_max: 6.0
+    price_per_kg: 40
+  epic:
+    display_name: "Эпическая"
+    color: "&d"
+    chance: 5
+    weight_min: 5.0
+    weight_max: 12.0
+    price_per_kg: 150
+
+rods:
+  rod1:
+    enabled: true
+    display_name: "Удочка Рыбака"
+    weight_bonus: 0.5
+    bite_time_reduction: 0.0
+    use_global_chances: true
+  rod2:
+    enabled: true
+    display_name: "Удочка Мастера"
+    weight_bonus: 1.0
+    bite_time_reduction: 0.10
+    use_global_chances: false
+    chances:
+      common: 60
+      rare: 35
+      epic: 5
+  rod3:
+    enabled: true
+    display_name: "Океанская удочка"
+    weight_bonus: 2.0
+    bite_time_reduction: 0.20
+    use_global_chances: false
+    chances:
+      common: 50
+      rare: 40
+      epic: 10
+
+items:
+  fish_name: "{rarity} рыба"
+  fish_lore:
+    - "&7Вес: {weight} кг"
+    - "&7Цена: {price} монет"
+  rod_lore:
+    - "&7Бонус веса: +{weight_bonus} кг"
+    - "&7Скорость поклёвки: -{bite_reduction_percent}%"
+    - "&8ID: {rod_id}"
+
+custom_fish:
+  require_custom_model_data: true
+  pdc_namespace: ""
+  pdc_key: ""
+  api_class: ""
+  api_method: ""
+
+messages:
+  prefix: "&6[NAMC-Fish]&r "
+  only_player: "&cКоманда доступна только игроку."
+  no_permission: "&cНедостаточно прав: {permission}"
+  no_custom_fish: "&eУ вас нет кастомной рыбы для продажи."
+  sold: "&aПродано рыб: {count}, получено: {price} монет."
+  economy_error: "&cОшибка экономики: {error}"
+  player_not_found: "&cИгрок не найден или не в сети."
+  invalid_rod: "&cНеизвестная удочка. Доступно: {available_rods}"
+  give_usage: "&eИспользование: /fish give <игрок> <rod_id>"
+  stats_usage: "&eИспользование: /fish stats <игрок>"
+  given_sender: "&aВы выдали {player}: {rod_id}"
+  given_target: "&aВы получили {rod_name}"
+  stats_header: "&6Статистика: &e{player}"
+  stats_total: "&7Рыб поймано: &f{total_fish}"
+  stats_biggest: "&7Самая большая: &f{biggest_fish} кг"
+  stats_money: "&7Монет заработано: &f{money_earned}"
+  top_header: "&6Топ рыбаков (по монетам):"
+  top_empty: "&eТоп пуст."
+  top_line: "&e{position}. &f{name} &7- {money} монет &8({fish_count} рыб)"
+  reload_done: "&aКонфиг NAMC-Fish перезагружен."
+  catch: "&aВы поймали: {rarity}&a ({weight} кг, {price} монет)"
+  help:
+    - "&6NAMC-Fish команды:"
+    - "&e/fish sell"
+    - "&e/fish top"
+    - "&e/fish give <игрок> <rod_id>"
+    - "&e/fish stats <игрок>"
+    - "&e/fish reload"
