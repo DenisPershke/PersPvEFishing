@@ -1,4 +1,4 @@
-name: NAMC-Fish
+name: PFishPve
 version: '${project.version}'
 main: pershkin.perspvefishing.PersPvEFishing
 api-version: '1.16'
@@ -6,16 +6,16 @@ softdepend: [Vault]
 
 commands:
   fish:
-    description: Main NAMC-Fish command
-    usage: /fish <sell|give|stats|top|reload>
+    description: Main PFishPve command
+    usage: /fish <sell|give|stats|top|captcha|reload>
 
 permissions:
   fishing.use:
-    description: Allows players to use NAMC-Fish features
+    description: Allows players to use PFishPve features
     default: true
   fishing.sell:
     description: Allows selling custom fish
     default: true
   fishing.admin:
-    description: Admin access for NAMC-Fish commands
+    description: Admin access for PFishPve commands
     default: op

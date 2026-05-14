@@ -1,10 +1,22 @@
-database: sqlite
-
 security:
   signing_secret: ""
 
 top:
   size: 10
+
+gameplay:
+  catch_exp: 0
+  vanilla_rod:
+    catch_custom_fish: true
+    weight_multiplier: 0.75
+    common_chance: 90
+    rare_chance: 9
+
+captcha:
+  enabled: false
+  chance_percent: 10
+  timeout_seconds: 25
+  min_catches_between_checks: 15
 
 rarities:
   common:
@@ -75,7 +87,7 @@ custom_fish:
   api_method: ""
 
 messages:
-  prefix: "&6[NAMC-Fish]&r "
+  prefix: "&6[Fish]&r "
   only_player: "&cКоманда доступна только игроку."
   no_permission: "&cНедостаточно прав: {permission}"
   no_custom_fish: "&eУ вас нет кастомной рыбы для продажи."
@@ -94,12 +106,19 @@ messages:
   top_header: "&6Топ рыбаков (по монетам):"
   top_empty: "&eТоп пуст."
   top_line: "&e{position}. &f{name} &7- {money} монет &8({fish_count} рыб)"
-  reload_done: "&aКонфиг NAMC-Fish перезагружен."
+  reload_done: "&aКонфиг Fish перезагружен."
   catch: "&aВы поймали: {rarity}&a ({weight} кг, {price} монет)"
+  captcha_required: "&eКапча: введите &f/fish captcha {code} &eза {seconds} сек."
+  captcha_solved: "&aКапча пройдена."
+  captcha_wrong: "&cНеверный код капчи."
+  captcha_expired: "&cКапча истекла. Попробуйте рыбачить снова."
+  captcha_not_found: "&eУ вас нет активной капчи."
+  captcha_usage: "&eИспользование: /fish captcha <код>"
   help:
-    - "&6NAMC-Fish команды:"
+    - "&6Fish команды:"
     - "&e/fish sell"
     - "&e/fish top"
     - "&e/fish give <игрок> <rod_id>"
     - "&e/fish stats <игрок>"
+    - "&e/fish captcha <код>"
     - "&e/fish reload"

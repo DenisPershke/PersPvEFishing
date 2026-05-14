@@ -32,6 +32,15 @@ public final class FishingConfig {
     private String customFishPdcKey = "";
     private String customFishApiClass = "";
     private String customFishApiMethod = "";
+    private boolean vanillaRodCatchCustomFish = true;
+    private double vanillaWeightMultiplier = 0.75D;
+    private int vanillaCommonChance = 90;
+    private int vanillaRareChance = 9;
+    private int catchExp = 0;
+    private boolean captchaEnabled = false;
+    private int captchaChancePercent = 10;
+    private int captchaTimeoutSeconds = 25;
+    private int captchaMinCatches = 15;
 
     public FishingConfig(FileConfiguration config) {
         reload(config);
@@ -43,8 +52,10 @@ public final class FishingConfig {
         loadFormats(config);
         loadMessages(config);
         loadCustomFish(config);
+        loadGameplay(config);
+        loadCaptcha(config);
         topSize = Math.max(1, config.getInt("top.size", 10));
-        messagePrefix = colorize(config.getString("messages.prefix", "&6[NAMC-Fish]&r "));
+        messagePrefix = colorize(config.getString("messages.prefix", "&6[Fish]&r "));
     }
 
     public FishRarity rollRarity(Random random, RodType rodType) {
@@ -105,6 +116,42 @@ public final class FishingConfig {
 
     public String getCustomFishApiMethod() {
         return customFishApiMethod;
+    }
+
+    public boolean isVanillaRodCatchCustomFish() {
+        return vanillaRodCatchCustomFish;
+    }
+
+    public double getVanillaWeightMultiplier() {
+        return vanillaWeightMultiplier;
+    }
+
+    public int getVanillaCommonChance() {
+        return vanillaCommonChance;
+    }
+
+    public int getVanillaRareChance() {
+        return vanillaRareChance;
+    }
+
+    public int getCatchExp() {
+        return catchExp;
+    }
+
+    public boolean isCaptchaEnabled() {
+        return captchaEnabled;
+    }
+
+    public int getCaptchaChancePercent() {
+        return captchaChancePercent;
+    }
+
+    public int getCaptchaTimeoutSeconds() {
+        return captchaTimeoutSeconds;
+    }
+
+    public int getCaptchaMinCatches() {
+        return captchaMinCatches;
     }
 
     public String getFishNameTemplate() {
@@ -232,6 +279,25 @@ public final class FishingConfig {
         customFishApiMethod = trimToEmpty(config.getString("custom_fish.api_method", ""));
     }
 
+    private void loadGameplay(FileConfiguration config) {
+        if (config.contains("gameplay.vanilla_rod.catch_custom_fish")) {
+            vanillaRodCatchCustomFish = config.getBoolean("gameplay.vanilla_rod.catch_custom_fish", true);
+        } else {
+            vanillaRodCatchCustomFish = config.getBoolean("gameplay.vanilla_rod.enabled", true);
+        }
+        vanillaWeightMultiplier = Math.max(0.0D, config.getDouble("gameplay.vanilla_rod.weight_multiplier", 0.75D));
+        vanillaCommonChance = clampInt(config.getInt("gameplay.vanilla_rod.common_chance", 90), 0, 100);
+        vanillaRareChance = clampInt(config.getInt("gameplay.vanilla_rod.rare_chance", 9), 0, 100);
+        catchExp = Math.max(0, config.getInt("gameplay.catch_exp", 0));
+    }
+
+    private void loadCaptcha(FileConfiguration config) {
+        captchaEnabled = config.getBoolean("captcha.enabled", false);
+        captchaChancePercent = clampInt(config.getInt("captcha.chance_percent", 10), 0, 100);
+        captchaTimeoutSeconds = Math.max(5, config.getInt("captcha.timeout_seconds", 25));
+        captchaMinCatches = Math.max(1, config.getInt("captcha.min_catches_between_checks", 15));
+    }
+
     private void loadMessages(FileConfiguration config) {
         messages.clear();
         helpMessages.clear();
@@ -254,16 +320,23 @@ public final class FishingConfig {
         messages.put("top_header", config.getString("messages.top_header", "&6Top fishers (money):"));
         messages.put("top_empty", config.getString("messages.top_empty", "&eTop is empty."));
         messages.put("top_line", config.getString("messages.top_line", "&e{position}. &f{name} &7- {money} coins &8({fish_count} fish)"));
-        messages.put("reload_done", config.getString("messages.reload_done", "&aNAMC-Fish config reloaded."));
+        messages.put("reload_done", config.getString("messages.reload_done", "&aFish config reloaded."));
         messages.put("catch", config.getString("messages.catch", "&aYou caught: {rarity}&a ({weight} kg, {price} coins)"));
+        messages.put("captcha_required", config.getString("messages.captcha_required", "&eCaptcha: type &f/fish captcha {code} &ein {seconds}s."));
+        messages.put("captcha_solved", config.getString("messages.captcha_solved", "&aCaptcha passed."));
+        messages.put("captcha_wrong", config.getString("messages.captcha_wrong", "&cWrong captcha code."));
+        messages.put("captcha_expired", config.getString("messages.captcha_expired", "&cCaptcha expired. Try fishing again."));
+        messages.put("captcha_not_found", config.getString("messages.captcha_not_found", "&eYou do not have active captcha."));
+        messages.put("captcha_usage", config.getString("messages.captcha_usage", "&eUsage: /fish captcha <code>"));
 
         List<String> help = config.getStringList("messages.help");
         if (help.isEmpty()) {
-            helpMessages.add("&6NAMC-Fish commands:");
+            helpMessages.add("&6Fish commands:");
             helpMessages.add("&e/fish sell");
             helpMessages.add("&e/fish top");
             helpMessages.add("&e/fish give <player> <rod_id>");
             helpMessages.add("&e/fish stats <player>");
+            helpMessages.add("&e/fish captcha <code>");
             helpMessages.add("&e/fish reload");
         } else {
             helpMessages.addAll(help);
@@ -304,6 +377,10 @@ public final class FishingConfig {
     }
 
     private static double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    private static int clampInt(int value, int min, int max) {
         return Math.max(min, Math.min(max, value));
     }
 

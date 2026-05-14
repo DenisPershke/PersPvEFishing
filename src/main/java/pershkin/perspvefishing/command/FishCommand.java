@@ -15,6 +15,7 @@ import pershkin.perspvefishing.item.ItemManager;
 import pershkin.perspvefishing.model.PlayerStats;
 import pershkin.perspvefishing.model.RodType;
 import pershkin.perspvefishing.model.TopEntry;
+import pershkin.perspvefishing.security.CaptchaManager;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -54,6 +55,9 @@ public final class FishCommand implements CommandExecutor, TabCompleter {
         }
         if ("reload".equals(sub)) {
             return handleReload(sender);
+        }
+        if ("captcha".equals(sub)) {
+            return handleCaptcha(sender, args);
         }
 
         sendHelp(sender);
@@ -255,7 +259,30 @@ public final class FishCommand implements CommandExecutor, TabCompleter {
         }
 
         plugin.reloadPlugin();
-        sender.sendMessage(config.message("reload_done", "&aNAMC-Fish config reloaded."));
+        sender.sendMessage(config.message("reload_done", "&aFish config reloaded."));
+        return true;
+    }
+
+    private boolean handleCaptcha(CommandSender sender, String[] args) {
+        FishingConfig config = plugin.getFishingConfig();
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(config.message("only_player", "&cThis command is only for players."));
+            return true;
+        }
+        if (args.length < 2) {
+            sender.sendMessage(config.message("captcha_usage", "&eUsage: /fish captcha <code>"));
+            return true;
+        }
+
+        Player player = (Player) sender;
+        int result = plugin.getCaptchaManager().answer(player, args[1]);
+        if (result == CaptchaManager.OK) {
+            player.sendMessage(config.message("captcha_solved", "&aCaptcha passed."));
+        } else if (result == CaptchaManager.WRONG) {
+            player.sendMessage(config.message("captcha_wrong", "&cWrong captcha code."));
+        } else {
+            player.sendMessage(config.message("captcha_not_found", "&eYou do not have active captcha."));
+        }
         return true;
     }
 
@@ -278,7 +305,7 @@ public final class FishCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         FishingConfig config = plugin.getFishingConfig();
         if (args.length == 1) {
-            List<String> completions = Arrays.asList("sell", "top", "give", "stats", "reload");
+            List<String> completions = Arrays.asList("sell", "top", "give", "stats", "reload", "captcha");
             return filterPrefix(completions, args[0]);
         }
 

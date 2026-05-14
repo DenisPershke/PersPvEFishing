@@ -23,10 +23,6 @@ import java.util.Random;
 
 public final class FishingListener implements Listener {
 
-    private static final double VANILLA_WEIGHT_MULTIPLIER = 0.75D;
-    private static final int VANILLA_COMMON_CHANCE = 90;
-    private static final int VANILLA_RARE_CHANCE = 9;
-
     private final PersPvEFishing plugin;
     private final Random random = new Random();
 
@@ -42,7 +38,10 @@ public final class FishingListener implements Listener {
 
         ItemStack rodInHand = player.getInventory().getItemInMainHand();
         RodType rodType = itemManager.getRodType(rodInHand);
-        boolean isVanillaRod = rodType == null && rodInHand != null && rodInHand.getType() == Material.FISHING_ROD;
+        boolean isVanillaRod = fishingConfig.isVanillaRodCatchCustomFish()
+                && rodType == null
+                && rodInHand != null
+                && rodInHand.getType() == Material.FISHING_ROD;
         if (rodType == null && !isVanillaRod) {
             return;
         }
@@ -62,12 +61,20 @@ public final class FishingListener implements Listener {
             return;
         }
 
-        FishRarity rarity = rodType == null ? rollVanillaRarity() : fishingConfig.rollRarity(random, rodType);
+        if (!plugin.getCaptchaManager().check(player)) {
+            if (event.getCaught() instanceof Item) {
+                event.getCaught().remove();
+            }
+            event.setExpToDrop(0);
+            return;
+        }
+
+        FishRarity rarity = rodType == null ? rollVanillaRarity(fishingConfig) : fishingConfig.rollRarity(random, rodType);
         FishingConfig.RaritySettings raritySettings = fishingConfig.getRaritySettings(rarity);
         double rolledWeight = randomWeight(raritySettings.getWeightMin(), raritySettings.getWeightMax());
         double finalWeight;
         if (rodType == null) {
-            finalWeight = roundOneDigit(rolledWeight * VANILLA_WEIGHT_MULTIPLIER);
+            finalWeight = roundOneDigit(rolledWeight * fishingConfig.getVanillaWeightMultiplier());
         } else {
             FishingConfig.RodSettings rodSettings = fishingConfig.getRodSettings(rodType);
             finalWeight = roundOneDigit(rolledWeight + rodSettings.getWeightBonus());
@@ -76,15 +83,15 @@ public final class FishingListener implements Listener {
 
         FishCatch fishCatch = new FishCatch(rarity, finalWeight, value);
         ItemStack fishItem = itemManager.createFishItem(fishCatch);
-        ItemStack[] leftovers = player.getInventory().addItem(fishItem).values().toArray(new ItemStack[0]);
-        for (ItemStack leftover : leftovers) {
-            player.getWorld().dropItemNaturally(player.getLocation(), leftover);
-        }
-
         if (event.getCaught() instanceof Item) {
-            event.getCaught().remove();
+            ((Item) event.getCaught()).setItemStack(fishItem);
+        } else {
+            ItemStack[] leftovers = player.getInventory().addItem(fishItem).values().toArray(new ItemStack[0]);
+            for (ItemStack leftover : leftovers) {
+                player.getWorld().dropItemNaturally(player.getLocation(), leftover);
+            }
         }
-        event.setExpToDrop(0);
+        event.setExpToDrop(fishingConfig.getCatchExp());
 
         plugin.getDatabaseManager().recordCatch(player.getUniqueId(), fishCatch);
         Map<String, String> placeholders = new HashMap<String, String>();
@@ -96,12 +103,14 @@ public final class FishingListener implements Listener {
         player.sendMessage(fishingConfig.applyPlaceholders(catchMessage, placeholders));
     }
 
-    private FishRarity rollVanillaRarity() {
+    private FishRarity rollVanillaRarity(FishingConfig config) {
         int roll = random.nextInt(100);
-        if (roll < VANILLA_COMMON_CHANCE) {
+        int common = config.getVanillaCommonChance();
+        int rare = config.getVanillaRareChance();
+        if (roll < common) {
             return FishRarity.COMMON;
         }
-        if (roll < VANILLA_COMMON_CHANCE + VANILLA_RARE_CHANCE) {
+        if (roll < common + rare) {
             return FishRarity.RARE;
         }
         return FishRarity.EPIC;
@@ -128,7 +137,6 @@ public final class FishingListener implements Listener {
             setMinWait.invoke(hook, Integer.valueOf(newMin));
             setMaxWait.invoke(hook, Integer.valueOf(newMax));
         } catch (Exception ignored) {
-            // Ignore for API builds where these methods are not available.
         }
     }
 
