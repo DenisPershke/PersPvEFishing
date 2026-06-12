@@ -7,7 +7,7 @@ softdepend: [Vault]
 commands:
   fish:
     description: Main PFishPve command
-    usage: /fish <sell|give|stats|top|captcha|reload>
+    usage: /fish <sell|give|stats|level|top|captcha|reload>
 
 permissions:
   fishing.use:

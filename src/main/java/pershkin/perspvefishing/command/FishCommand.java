@@ -12,6 +12,7 @@ import org.bukkit.inventory.ItemStack;
 import pershkin.perspvefishing.PersPvEFishing;
 import pershkin.perspvefishing.config.FishingConfig;
 import pershkin.perspvefishing.item.ItemManager;
+import pershkin.perspvefishing.model.LevelTier;
 import pershkin.perspvefishing.model.PlayerStats;
 import pershkin.perspvefishing.model.RodType;
 import pershkin.perspvefishing.model.TopEntry;
@@ -49,6 +50,9 @@ public final class FishCommand implements CommandExecutor, TabCompleter {
         }
         if ("stats".equals(sub)) {
             return handleStats(sender, args);
+        }
+        if ("level".equals(sub)) {
+            return handleLevel(sender, args);
         }
         if ("top".equals(sub)) {
             return handleTop(sender);
@@ -217,6 +221,59 @@ public final class FishCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean handleLevel(CommandSender sender, String[] args) {
+        FishingConfig config = plugin.getFishingConfig();
+        ItemManager itemManager = plugin.getItemManager();
+
+        OfflinePlayer target;
+        if (args.length >= 2) {
+            if (!sender.hasPermission("fishing.admin")) {
+                sendNoPermission(sender, "fishing.admin");
+                return true;
+            }
+            target = Bukkit.getOfflinePlayer(args[1]);
+        } else {
+            if (!(sender instanceof Player)) {
+                sender.sendMessage(config.message("only_player", "&cThis command is only for players."));
+                return true;
+            }
+            if (!sender.hasPermission("fishing.use")) {
+                sendNoPermission(sender, "fishing.use");
+                return true;
+            }
+            target = (Player) sender;
+        }
+
+        PlayerStats stats = plugin.getDatabaseManager().getStats(target.getUniqueId());
+        int totalFish = stats.getTotalFish();
+        LevelTier current = config.getLevelForFishCount(totalFish);
+        LevelTier next = config.getNextTier(current.getLevel());
+
+        Map<String, String> placeholders = new HashMap<String, String>();
+        placeholders.put("player", target.getName() == null ? args[1] : target.getName());
+        placeholders.put("level", String.valueOf(current.getLevel()));
+        placeholders.put("max_level", String.valueOf(config.getMaxLevel()));
+        placeholders.put("total_fish", String.valueOf(totalFish));
+        placeholders.put("weight_bonus", itemManager.formatOneDigit(current.getWeightBonus()));
+        placeholders.put("luck_multiplier", itemManager.trimPrice(current.getLuckMultiplier()));
+        placeholders.put("price_multiplier", itemManager.trimPrice(current.getPriceMultiplier()));
+
+        sender.sendMessage(config.applyPlaceholders(config.message("level_header", "&6Fishing level: &e{player}"), placeholders));
+        sender.sendMessage(config.applyPlaceholders(config.message("level_current", "&7Level: &f{level}/{max_level}"), placeholders));
+        sender.sendMessage(config.applyPlaceholders(config.message("level_bonuses", "&7Bonuses: +{weight_bonus} kg, luck x{luck_multiplier}, price x{price_multiplier}"), placeholders));
+
+        if (next == null) {
+            sender.sendMessage(config.applyPlaceholders(config.message("level_max", "&aMax level reached!"), placeholders));
+        } else {
+            int remaining = Math.max(0, next.getFishRequired() - totalFish);
+            placeholders.put("next_level", String.valueOf(next.getLevel()));
+            placeholders.put("next_required", String.valueOf(next.getFishRequired()));
+            placeholders.put("remaining", String.valueOf(remaining));
+            sender.sendMessage(config.applyPlaceholders(config.message("level_progress", "&7To level {next_level}: {remaining} more fish."), placeholders));
+        }
+        return true;
+    }
+
     private boolean handleTop(CommandSender sender) {
         FishingConfig config = plugin.getFishingConfig();
         if (!sender.hasPermission("fishing.use")) {
@@ -305,11 +362,11 @@ public final class FishCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         FishingConfig config = plugin.getFishingConfig();
         if (args.length == 1) {
-            List<String> completions = Arrays.asList("sell", "top", "give", "stats", "reload", "captcha");
+            List<String> completions = Arrays.asList("sell", "top", "give", "stats", "level", "reload", "captcha");
             return filterPrefix(completions, args[0]);
         }
 
-        if (args.length == 2 && ("give".equalsIgnoreCase(args[0]) || "stats".equalsIgnoreCase(args[0]))) {
+        if (args.length == 2 && ("give".equalsIgnoreCase(args[0]) || "stats".equalsIgnoreCase(args[0]) || "level".equalsIgnoreCase(args[0]))) {
             List<String> names = new ArrayList<String>();
             for (Player player : Bukkit.getOnlinePlayers()) {
                 names.add(player.getName());

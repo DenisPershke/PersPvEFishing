@@ -7,10 +7,75 @@ top:
 gameplay:
   catch_exp: 0
   vanilla_rod:
-    catch_custom_fish: true
+    # false = обычная ванильная удочка ловит только ванильный лут (как на ванилле),
+    # кастомная рыба выпадает ТОЛЬКО со специальных удочек плагина.
+    catch_custom_fish: false
     weight_multiplier: 0.75
     common_chance: 90
     rare_chance: 9
+
+# Система уровней рыбалки.
+# Уровень игрока определяется по количеству пойманной рыбы (fish_required).
+# С каждым уровнем растёт:
+#   weight_bonus    - сколько кг добавляется к пойманной рыбе;
+#   luck_multiplier - множитель шанса редкой/эпической рыбы (удача), 1.0 = без изменений;
+#   price_multiplier- множитель цены пойманной рыбы (зарплата), 1.0 = без изменений.
+# По умолчанию: вес растёт с 1 уровня, удача — после 4-го, цена — после 8-го.
+# Можно задать любое количество уровней — просто добавляйте/убирайте записи в tiers.
+levels:
+  enabled: true
+  level_up_message: true
+  tiers:
+    1:
+      fish_required: 0
+      weight_bonus: 0.0
+      luck_multiplier: 1.0
+      price_multiplier: 1.0
+    2:
+      fish_required: 50
+      weight_bonus: 0.2
+      luck_multiplier: 1.0
+      price_multiplier: 1.0
+    3:
+      fish_required: 150
+      weight_bonus: 0.4
+      luck_multiplier: 1.0
+      price_multiplier: 1.0
+    4:
+      fish_required: 300
+      weight_bonus: 0.6
+      luck_multiplier: 1.0
+      price_multiplier: 1.0
+    5:
+      fish_required: 500
+      weight_bonus: 0.8
+      luck_multiplier: 1.2
+      price_multiplier: 1.0
+    6:
+      fish_required: 800
+      weight_bonus: 1.0
+      luck_multiplier: 1.4
+      price_multiplier: 1.0
+    7:
+      fish_required: 1200
+      weight_bonus: 1.2
+      luck_multiplier: 1.6
+      price_multiplier: 1.0
+    8:
+      fish_required: 1800
+      weight_bonus: 1.4
+      luck_multiplier: 1.8
+      price_multiplier: 1.0
+    9:
+      fish_required: 2600
+      weight_bonus: 1.7
+      luck_multiplier: 2.0
+      price_multiplier: 1.25
+    10:
+      fish_required: 4000
+      weight_bonus: 2.0
+      luck_multiplier: 2.5
+      price_multiplier: 1.5
 
 captcha:
   enabled: false
@@ -114,11 +179,18 @@ messages:
   captcha_expired: "&cКапча истекла. Попробуйте рыбачить снова."
   captcha_not_found: "&eУ вас нет активной капчи."
   captcha_usage: "&eИспользование: /fish captcha <код>"
+  level_up: "&6Новый уровень рыбалки: &e{level}&6/&e{max_level}&6!"
+  level_header: "&6Уровень рыбалки: &e{player}"
+  level_current: "&7Уровень: &f{level}&7/&f{max_level} &8(рыб: {total_fish})"
+  level_bonuses: "&7Бонусы: &f+{weight_bonus} кг&7, удача &fx{luck_multiplier}&7, цена &fx{price_multiplier}"
+  level_progress: "&7До уровня &f{next_level}&7: ещё &f{remaining} &7рыб."
+  level_max: "&aДостигнут максимальный уровень!"
   help:
     - "&6Fish команды:"
     - "&e/fish sell"
     - "&e/fish top"
     - "&e/fish give <игрок> <rod_id>"
     - "&e/fish stats <игрок>"
+    - "&e/fish level [игрок]"
     - "&e/fish captcha <код>"
     - "&e/fish reload"

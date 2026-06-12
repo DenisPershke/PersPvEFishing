@@ -4,10 +4,12 @@ import org.bukkit.ChatColor;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import pershkin.perspvefishing.model.FishRarity;
+import pershkin.perspvefishing.model.LevelTier;
 import pershkin.perspvefishing.model.RodType;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -24,6 +26,9 @@ public final class FishingConfig {
     private final ArrayList<String> helpMessages = new ArrayList<String>();
     private final ArrayList<String> rodLoreTemplate = new ArrayList<String>();
     private final ArrayList<String> fishLoreTemplate = new ArrayList<String>();
+    private final ArrayList<LevelTier> levelTiers = new ArrayList<LevelTier>();
+    private boolean levelsEnabled = true;
+    private boolean levelUpMessageEnabled = true;
     private String fishNameTemplate = "{rarity} fish";
     private String messagePrefix = "";
     private int topSize = 10;
@@ -53,18 +58,23 @@ public final class FishingConfig {
         loadMessages(config);
         loadCustomFish(config);
         loadGameplay(config);
+        loadLevels(config);
         loadCaptcha(config);
         topSize = Math.max(1, config.getInt("top.size", 10));
         messagePrefix = colorize(config.getString("messages.prefix", "&6[Fish]&r "));
     }
 
     public FishRarity rollRarity(Random random, RodType rodType) {
+        return rollRarity(random, rodType, 1.0D);
+    }
+
+    public FishRarity rollRarity(Random random, RodType rodType, double luckMultiplier) {
         RodSettings rod = getRodSettings(rodType);
         Map<FishRarity, Integer> chances = rod.getChancesOrNull();
         if (chances == null || chances.isEmpty()) {
             chances = getGlobalChances();
         }
-        return rollByChances(random, chances);
+        return rollByChances(random, chances, luckMultiplier);
     }
 
     public RaritySettings getRaritySettings(FishRarity rarity) {
@@ -291,6 +301,79 @@ public final class FishingConfig {
         catchExp = Math.max(0, config.getInt("gameplay.catch_exp", 0));
     }
 
+    private void loadLevels(FileConfiguration config) {
+        levelTiers.clear();
+        levelsEnabled = config.getBoolean("levels.enabled", true);
+        levelUpMessageEnabled = config.getBoolean("levels.level_up_message", true);
+
+        ConfigurationSection tiers = config.getConfigurationSection("levels.tiers");
+        if (tiers != null) {
+            for (String key : tiers.getKeys(false)) {
+                int level;
+                try {
+                    level = Integer.parseInt(key.trim());
+                } catch (NumberFormatException ex) {
+                    continue;
+                }
+                if (level < 1) {
+                    continue;
+                }
+                String path = "levels.tiers." + key;
+                int fishRequired = Math.max(0, config.getInt(path + ".fish_required", 0));
+                double weightBonus = Math.max(0.0D, config.getDouble(path + ".weight_bonus", 0.0D));
+                double luckMultiplier = Math.max(0.0D, config.getDouble(path + ".luck_multiplier", 1.0D));
+                double priceMultiplier = Math.max(0.0D, config.getDouble(path + ".price_multiplier", 1.0D));
+                levelTiers.add(new LevelTier(level, fishRequired, weightBonus, luckMultiplier, priceMultiplier));
+            }
+        }
+
+        if (levelTiers.isEmpty()) {
+            levelTiers.add(new LevelTier(1, 0, 0.0D, 1.0D, 1.0D));
+        }
+
+        Collections.sort(levelTiers, new Comparator<LevelTier>() {
+            @Override
+            public int compare(LevelTier a, LevelTier b) {
+                return Integer.compare(a.getLevel(), b.getLevel());
+            }
+        });
+    }
+
+    public boolean isLevelsEnabled() {
+        return levelsEnabled;
+    }
+
+    public boolean isLevelUpMessageEnabled() {
+        return levelUpMessageEnabled;
+    }
+
+    public List<LevelTier> getLevelTiers() {
+        return new ArrayList<LevelTier>(levelTiers);
+    }
+
+    public int getMaxLevel() {
+        return levelTiers.get(levelTiers.size() - 1).getLevel();
+    }
+
+    public LevelTier getLevelForFishCount(int totalFish) {
+        LevelTier current = levelTiers.get(0);
+        for (LevelTier tier : levelTiers) {
+            if (totalFish >= tier.getFishRequired()) {
+                current = tier;
+            }
+        }
+        return current;
+    }
+
+    public LevelTier getNextTier(int level) {
+        for (LevelTier tier : levelTiers) {
+            if (tier.getLevel() > level) {
+                return tier;
+            }
+        }
+        return null;
+    }
+
     private void loadCaptcha(FileConfiguration config) {
         captchaEnabled = config.getBoolean("captcha.enabled", false);
         captchaChancePercent = clampInt(config.getInt("captcha.chance_percent", 10), 0, 100);
@@ -328,6 +411,12 @@ public final class FishingConfig {
         messages.put("captcha_expired", config.getString("messages.captcha_expired", "&cCaptcha expired. Try fishing again."));
         messages.put("captcha_not_found", config.getString("messages.captcha_not_found", "&eYou do not have active captcha."));
         messages.put("captcha_usage", config.getString("messages.captcha_usage", "&eUsage: /fish captcha <code>"));
+        messages.put("level_up", config.getString("messages.level_up", "&6Новый уровень рыбалки: &e{level}&6/&e{max_level}&6!"));
+        messages.put("level_header", config.getString("messages.level_header", "&6Уровень рыбалки: &e{player}"));
+        messages.put("level_current", config.getString("messages.level_current", "&7Уровень: &f{level}&7/&f{max_level} &8(рыб: {total_fish})"));
+        messages.put("level_bonuses", config.getString("messages.level_bonuses", "&7Бонусы: &f+{weight_bonus} кг&7, удача &fx{luck_multiplier}&7, цена &fx{price_multiplier}"));
+        messages.put("level_progress", config.getString("messages.level_progress", "&7До уровня &f{next_level}&7: ещё &f{remaining} &7рыб."));
+        messages.put("level_max", config.getString("messages.level_max", "&aДостигнут максимальный уровень!"));
 
         List<String> help = config.getStringList("messages.help");
         if (help.isEmpty()) {
@@ -336,6 +425,7 @@ public final class FishingConfig {
             helpMessages.add("&e/fish top");
             helpMessages.add("&e/fish give <player> <rod_id>");
             helpMessages.add("&e/fish stats <player>");
+            helpMessages.add("&e/fish level [player]");
             helpMessages.add("&e/fish captcha <code>");
             helpMessages.add("&e/fish reload");
         } else {
@@ -351,17 +441,18 @@ public final class FishingConfig {
         return global;
     }
 
-    private FishRarity rollByChances(Random random, Map<FishRarity, Integer> chances) {
-        int common = chanceOf(chances, FishRarity.COMMON);
-        int rare = chanceOf(chances, FishRarity.RARE);
-        int epic = chanceOf(chances, FishRarity.EPIC);
-        int total = common + rare + epic;
+    private FishRarity rollByChances(Random random, Map<FishRarity, Integer> chances, double luckMultiplier) {
+        double luck = Math.max(0.0D, luckMultiplier);
+        double common = chanceOf(chances, FishRarity.COMMON);
+        double rare = chanceOf(chances, FishRarity.RARE) * luck;
+        double epic = chanceOf(chances, FishRarity.EPIC) * luck;
+        double total = common + rare + epic;
 
-        if (total <= 0) {
+        if (total <= 0.0D) {
             return FishRarity.COMMON;
         }
 
-        int roll = random.nextInt(total);
+        double roll = random.nextDouble() * total;
         if (roll < common) {
             return FishRarity.COMMON;
         }

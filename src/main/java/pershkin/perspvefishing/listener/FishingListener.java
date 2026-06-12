@@ -14,6 +14,7 @@ import pershkin.perspvefishing.config.FishingConfig;
 import pershkin.perspvefishing.item.ItemManager;
 import pershkin.perspvefishing.model.FishCatch;
 import pershkin.perspvefishing.model.FishRarity;
+import pershkin.perspvefishing.model.LevelTier;
 import pershkin.perspvefishing.model.RodType;
 
 import java.lang.reflect.Method;
@@ -69,17 +70,27 @@ public final class FishingListener implements Listener {
             return;
         }
 
-        FishRarity rarity = rodType == null ? rollVanillaRarity(fishingConfig) : fishingConfig.rollRarity(random, rodType);
+        int totalFishBefore = plugin.getDatabaseManager().getStats(player.getUniqueId()).getTotalFish();
+        LevelTier levelTier = fishingConfig.isLevelsEnabled()
+                ? fishingConfig.getLevelForFishCount(totalFishBefore)
+                : null;
+        double luckMultiplier = levelTier == null ? 1.0D : levelTier.getLuckMultiplier();
+        double levelWeightBonus = levelTier == null ? 0.0D : levelTier.getWeightBonus();
+        double levelPriceMultiplier = levelTier == null ? 1.0D : levelTier.getPriceMultiplier();
+
+        FishRarity rarity = rodType == null
+                ? rollVanillaRarity(fishingConfig, luckMultiplier)
+                : fishingConfig.rollRarity(random, rodType, luckMultiplier);
         FishingConfig.RaritySettings raritySettings = fishingConfig.getRaritySettings(rarity);
         double rolledWeight = randomWeight(raritySettings.getWeightMin(), raritySettings.getWeightMax());
         double finalWeight;
         if (rodType == null) {
-            finalWeight = roundOneDigit(rolledWeight * fishingConfig.getVanillaWeightMultiplier());
+            finalWeight = roundOneDigit(rolledWeight * fishingConfig.getVanillaWeightMultiplier() + levelWeightBonus);
         } else {
             FishingConfig.RodSettings rodSettings = fishingConfig.getRodSettings(rodType);
-            finalWeight = roundOneDigit(rolledWeight + rodSettings.getWeightBonus());
+            finalWeight = roundOneDigit(rolledWeight + rodSettings.getWeightBonus() + levelWeightBonus);
         }
-        double value = roundTwoDigits(finalWeight * raritySettings.getPricePerKg());
+        double value = roundTwoDigits(finalWeight * raritySettings.getPricePerKg() * levelPriceMultiplier);
 
         FishCatch fishCatch = new FishCatch(rarity, finalWeight, value);
         ItemStack fishItem = itemManager.createFishItem(fishCatch);
@@ -94,6 +105,18 @@ public final class FishingListener implements Listener {
         event.setExpToDrop(fishingConfig.getCatchExp());
 
         plugin.getDatabaseManager().recordCatch(player.getUniqueId(), fishCatch);
+
+        if (levelTier != null && fishingConfig.isLevelUpMessageEnabled()) {
+            LevelTier newTier = fishingConfig.getLevelForFishCount(totalFishBefore + 1);
+            if (newTier.getLevel() > levelTier.getLevel()) {
+                Map<String, String> levelPlaceholders = new HashMap<String, String>();
+                levelPlaceholders.put("level", String.valueOf(newTier.getLevel()));
+                levelPlaceholders.put("max_level", String.valueOf(fishingConfig.getMaxLevel()));
+                String levelMessage = fishingConfig.message("level_up", "&6Новый уровень рыбалки: &e{level}&6/&e{max_level}&6!");
+                player.sendMessage(fishingConfig.applyPlaceholders(levelMessage, levelPlaceholders));
+            }
+        }
+
         Map<String, String> placeholders = new HashMap<String, String>();
         placeholders.put("rarity", raritySettings.getColoredName());
         placeholders.put("rarity_name", raritySettings.getDisplayName());
@@ -103,10 +126,16 @@ public final class FishingListener implements Listener {
         player.sendMessage(fishingConfig.applyPlaceholders(catchMessage, placeholders));
     }
 
-    private FishRarity rollVanillaRarity(FishingConfig config) {
-        int roll = random.nextInt(100);
-        int common = config.getVanillaCommonChance();
-        int rare = config.getVanillaRareChance();
+    private FishRarity rollVanillaRarity(FishingConfig config, double luckMultiplier) {
+        double luck = Math.max(0.0D, luckMultiplier);
+        double common = config.getVanillaCommonChance();
+        double rare = config.getVanillaRareChance() * luck;
+        double epic = Math.max(0, 100 - config.getVanillaCommonChance() - config.getVanillaRareChance()) * luck;
+        double total = common + rare + epic;
+        if (total <= 0.0D) {
+            return FishRarity.COMMON;
+        }
+        double roll = random.nextDouble() * total;
         if (roll < common) {
             return FishRarity.COMMON;
         }
